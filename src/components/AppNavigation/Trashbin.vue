@@ -25,7 +25,7 @@ License along with this library. If not, see <http://www.gnu.org/licenses/>.
 		:pinned="true"
 		@click.prevent="onShow">
 		<template #icon>
-			<Delete :size="20" decorative />
+			<Delete :size="20" />
 		</template>
 		<template #extra>
 			<Modal v-if="showModal"
@@ -36,7 +36,7 @@ License along with this library. If not, see <http://www.gnu.org/licenses/>.
 					</EmptyContent>
 					<EmptyContent v-else-if="!items.length">
 						<template #icon>
-							<Delete :size="20" decorative />
+							<Delete :size="64" />
 						</template>
 						{{ t('tasks', 'You do not have any deleted calendars, tasks or events.') }}
 					</EmptyContent>
@@ -77,7 +77,7 @@ License along with this library. If not, see <http://www.gnu.org/licenses/>.
 										<ActionButton
 											@click="onDeletePermanently(item)">
 											<template #icon>
-												<Delete :size="20" decorative />
+												<Delete :size="20" />
 											</template>
 											{{ t('tasks','Delete permanently') }}
 										</ActionButton>
@@ -152,13 +152,23 @@ export default {
 				color: calendar.color ?? uidToHexColor(calendar.displayname),
 			}))
 			const formattedCalendarObjects = this.objects.map(vobject => {
-				let eventSummary = t('tasks', 'Untitled item')
+				let name
 				try {
-					eventSummary = vobject?.calendarComponent.getComponentIterator().next().value?.title
+					name = vobject?.calendarComponent.getComponentIterator().next().value?.title
 				} catch (e) {
-					// ignore
 				}
-				let subline = vobject.calendar.displayName
+				if (!name) {
+					if (vobject.objectType === 'VTODO') {
+						name = t('tasks', 'Untitled task')
+					} else if (vobject.objectType === 'VEVENT') {
+						name = t('tasks', 'Untitled event')
+					} else if (vobject.objectType === 'VJOURNAL') {
+						name = t('tasks', 'Untitled journal')
+					} else {
+						name = t('tasks', 'Untitled item')
+					}
+				}
+				let subline = vobject.calendar?.displayName || t('tasks', 'Unknown calendar')
 				if (vobject.isEvent) {
 					const event = vobject?.calendarComponent.getFirstComponent('VEVENT')
 					if (event?.startDate.jsDate && event?.isAllDay()) {
@@ -168,13 +178,13 @@ export default {
 					}
 				}
 				const color = vobject.calendarComponent.getComponentIterator().next().value?.color
-						?? vobject.calendar.color
-						?? uidToHexColor(vobject.calendar.displayName)
+						?? vobject.calendar?.color
+						?? uidToHexColor(subline)
 				return {
 					vobject,
 					type: 'object',
 					key: vobject.id,
-					name: eventSummary,
+					name,
 					subline,
 					url: vobject.uri,
 					deletedAt: vobject.dav._props['{http://nextcloud.com/ns}deleted-at'],
